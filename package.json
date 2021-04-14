@@ -3,22 +3,16 @@
   "version": "1.0.0",
   "description": "example project react with nodejs",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.bundle.js",
     "build": "webpack",
     "dev": "nodemon ./server.js localhost 3080"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bbachi/react-nodejs-example.git"
-  },
-  "author": "Bhargav Bachina",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/bbachi/react-nodejs-example/issues"
-  },
-  "homepage": "https://github.com/bbachi/react-nodejs-example#readme",
   "dependencies": {
+    "@elastic/elasticsearch": "^7.12.0",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "http-proxy-middleware": "^1.0.4"
   },
