@@ -1,10 +1,11 @@
 import express from "express";
 import dotenv from "dotenv";
+import videosRoutes from "./src/api/routes/videos.js";
 
-dotenv.config();
 const PORT = process.env.PORT || 8080;
-
 const app = express();
+dotenv.config();
+
 app.use(
   express.urlencoded({
     extended: true,
@@ -19,6 +20,7 @@ app.use(function (req, res, next) {
   );
   next();
 });
+app.use("/videos", videosRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({

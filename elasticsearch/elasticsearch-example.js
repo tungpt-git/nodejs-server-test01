@@ -1,13 +1,13 @@
 import { Client } from "@elastic/elasticsearch";
-import { Indexes } from "./const.js";
 import dotenv from "dotenv";
+import { INDEXES } from "../src/libs/const.js";
 dotenv.config();
 
 console.log({ node: process.env.ELASTICHSEARCH });
 const client = new Client({ node: process.env.ELASTICHSEARCH });
 
 const result = await client.search({
-  index: Indexes.VIDEOS,
+  index: INDEXES.VIDEOS,
   body: {
     _source: {
       includes: ["name"],
@@ -32,7 +32,7 @@ console.log(JSON.stringify(result.body));
 
 export async function searchVideos(queryString) {
   return await client.search({
-    index: Indexes.VIDEOS,
+    index: INDEXES.VIDEOS,
     body: {
       _source: {
         includes: ["name"],
