@@ -16,7 +16,7 @@ export async function searchVideosByQuery(req, res) {
       index: INDEXES.VIDEOS,
       body: {
         _source: {
-          includes: ["name"],
+          excludes: ["segments"],
         },
         query: {
           nested: {
@@ -33,7 +33,46 @@ export async function searchVideosByQuery(req, res) {
         },
       },
     });
-    res.json(result);
+    const body = result.body;
+    const data = {
+      total: body.hits.total.value,
+      items: body.hits.hits.map((item) => ({
+        ...item._source,
+        segments: item.inner_hits.segments.hits.hits.map((s) => ({
+          start: s._source.start,
+          end: s._source.end,
+          text: s._source.text,
+        })),
+      })),
+    };
+
+    res.json({ body: { data } });
+  } catch (error) {
+    res.json({ message: error.message });
+  }
+}
+
+export async function getVideo(req, res) {
+  const { id: uid } = req.params;
+  try {
+    const client = new Client({ node: process.env.ELASTICHSEARCH });
+
+    const result = await client.search({
+      index: INDEXES.VIDEOS,
+      body: {
+        query: {
+          match: {
+            uid,
+          },
+        },
+      },
+    });
+
+    const video = result.body.hits.hits?.length
+      ? result.body.hits.hits[0]._source
+      : null;
+    console.log(result);
+    res.json({ body: { data: video } });
   } catch (error) {
     res.json({ message: error.message });
   }
