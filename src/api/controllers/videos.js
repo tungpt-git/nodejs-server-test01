@@ -5,6 +5,8 @@ import { INDEXES } from "../../libs/const.js";
 
 ("use strict");
 
+const SEGMENTS_TEXT = `${"segments.text"}`;
+
 export async function searchVideosByQuery(req, res) {
   console.log(req.body);
   try {
@@ -18,6 +20,7 @@ export async function searchVideosByQuery(req, res) {
         _source: {
           excludes: ["segments"],
         },
+        size,
         query: {
           nested: {
             path: "segments",
@@ -33,18 +36,8 @@ export async function searchVideosByQuery(req, res) {
         },
       },
     });
-    const body = result.body;
-    const data = {
-      total: body.hits.total.value,
-      items: body.hits.hits.map((item) => ({
-        ...item._source,
-        segments: item.inner_hits.segments.hits.hits.map((s) => ({
-          start: s._source.start,
-          end: s._source.end,
-          text: s._source.text,
-        })),
-      })),
-    };
+
+    const data = formatESResult(result);
 
     res.json({ body: { data } });
   } catch (error) {
@@ -77,3 +70,74 @@ export async function getVideo(req, res) {
     res.json({ message: error.message });
   }
 }
+
+export async function searchVideoMultipleConditions(req, res) {
+  console.log("complex", req.body);
+  try {
+    const client = new Client({ node: process.env.ELASTICHSEARCH });
+
+    const { size = 10, match, notMatch } = req.body;
+
+    const mustArr = (match || []).map((txt) => ({
+      match: {
+        "segments.text": txt,
+      },
+    }));
+
+    const mustNotArr = (notMatch || []).map((txt) => ({
+      match: {
+        "segments.text": txt,
+      },
+    }));
+
+    console.log(JSON.stringify({ mustArr }));
+
+    const result = await client.search({
+      index: INDEXES.VIDEOS,
+      body: {
+        _source: {
+          excludes: ["segments"],
+        },
+        size,
+        query: {
+          nested: {
+            path: "segments",
+            query: {
+              bool: {
+                must: mustArr,
+                must_not: mustNotArr,
+              },
+            },
+            inner_hits: {
+              size: 10,
+            },
+          },
+        },
+      },
+    });
+
+    console.log("result", result);
+
+    const data = formatESResult(result);
+
+    res.json({ body: { data } });
+  } catch (error) {
+    console.log(JSON.stringify(error));
+    res.json({ message: error.message });
+  }
+}
+
+const formatESResult = (result) => {
+  const body = result.body;
+  return {
+    total: body.hits.total.value,
+    items: body.hits.hits.map((item) => ({
+      ...item._source,
+      segments: item.inner_hits.segments.hits.hits.map((s) => ({
+        start: s._source.start,
+        end: s._source.end,
+        text: s._source.text,
+      })),
+    })),
+  };
+};
