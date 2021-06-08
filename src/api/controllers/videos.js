@@ -76,7 +76,8 @@ export async function searchVideoMultipleConditions(req, res) {
   try {
     const client = new Client({ node: process.env.ELASTICHSEARCH });
 
-    const { size = 10, match, notMatch } = req.body;
+    const { size = 10, match, notMatch, filter } = req.body;
+    const { durationRange } = filter || {};
 
     const mustArr = (match || []).map((txt) => ({
       match: {
@@ -92,6 +93,39 @@ export async function searchVideoMultipleConditions(req, res) {
 
     console.log(JSON.stringify({ mustArr }));
 
+    const query = {
+      bool: {
+        filter: [
+          !durationRange || !durationRange[0] || !durationRange[1]
+            ? null
+            : {
+                range: {
+                  duration: {
+                    gte: durationRange[0],
+                    lte: durationRange[1],
+                  },
+                },
+              },
+          {
+            nested: {
+              path: "segments",
+              query: {
+                bool: {
+                  must: mustArr,
+                  must_not: mustNotArr,
+                },
+              },
+              inner_hits: {
+                size: 10,
+              },
+            },
+          },
+        ].filter((i) => i !== null),
+      },
+    };
+
+    console.log(JSON.stringify(query));
+
     const result = await client.search({
       index: INDEXES.VIDEOS,
       body: {
@@ -99,20 +133,7 @@ export async function searchVideoMultipleConditions(req, res) {
           excludes: ["segments"],
         },
         size,
-        query: {
-          nested: {
-            path: "segments",
-            query: {
-              bool: {
-                must: mustArr,
-                must_not: mustNotArr,
-              },
-            },
-            inner_hits: {
-              size: 10,
-            },
-          },
-        },
+        query,
       },
     });
 
