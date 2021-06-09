@@ -77,7 +77,8 @@ export async function searchVideoMultipleConditions(req, res) {
     const client = new Client({ node: process.env.ELASTICHSEARCH });
 
     const { size = 10, match, notMatch, filter } = req.body;
-    const { durationRange } = filter || {};
+    const { durationRange, category, uploadedDateFrom, uploadedDateTo } =
+      filter || {};
 
     const mustArr = (match || []).map((txt) => ({
       match: {
@@ -93,33 +94,65 @@ export async function searchVideoMultipleConditions(req, res) {
 
     console.log(JSON.stringify({ mustArr }));
 
+    const segmentCond = {
+      nested: {
+        path: "segments",
+        query: {
+          bool: {
+            must: mustArr,
+            must_not: mustNotArr,
+          },
+        },
+        inner_hits: {
+          size: 10,
+        },
+      },
+    };
+
+    const durationCond =
+      !durationRange || !durationRange[0] || !durationRange[1]
+        ? null
+        : {
+            range: {
+              duration: {
+                gte: durationRange[0],
+                lte: durationRange[1],
+              },
+            },
+          };
+
+    const categoryCond = !category?.length
+      ? null
+      : {
+          bool: {
+            should: category.map((t) => ({
+              term: {
+                category: t,
+              },
+            })),
+          },
+        };
+
+    const uploadedDateCond =
+      !uploadedDateFrom && !uploadedDateTo
+        ? null
+        : {
+            range: {
+              uploadedDate: {
+                ...(uploadedDateFrom ? { gte: uploadedDateFrom } : {}),
+                ...(uploadedDateTo ? { lte: uploadedDateTo } : {}),
+              },
+            },
+          };
+    console.log(uploadedDateCond);
+
     const query = {
       bool: {
         filter: [
-          !durationRange || !durationRange[0] || !durationRange[1]
-            ? null
-            : {
-                range: {
-                  duration: {
-                    gte: durationRange[0],
-                    lte: durationRange[1],
-                  },
-                },
-              },
-          {
-            nested: {
-              path: "segments",
-              query: {
-                bool: {
-                  must: mustArr,
-                  must_not: mustNotArr,
-                },
-              },
-              inner_hits: {
-                size: 10,
-              },
-            },
-          },
+          durationCond,
+          segmentCond,
+          categoryCond,
+          uploadedDateCond,
         ].filter((i) => i !== null),
       },
     };
