@@ -77,7 +77,7 @@ export async function searchVideoMultipleConditions(req, res) {
     const client = new Client({ node: process.env.ELASTICHSEARCH });
 
     const { size = 10, match, notMatch, filter } = req.body;
-    const { durationRange, category, uploadedDateFrom, uploadedDateTo } =
+    const { durationRange, category, broadCastDateFrom, broadCastDateTo } =
       filter || {};
 
     const mustArr = (match || []).map((txt) => ({
@@ -133,18 +133,18 @@ export async function searchVideoMultipleConditions(req, res) {
           },
         };
 
-    const uploadedDateCond =
-      !uploadedDateFrom && !uploadedDateTo
+    const broadCastDateCond =
+      !broadCastDateFrom && !broadCastDateTo
         ? null
         : {
             range: {
-              uploadedDate: {
-                ...(uploadedDateFrom ? { gte: uploadedDateFrom } : {}),
-                ...(uploadedDateTo ? { lte: uploadedDateTo } : {}),
+              broadCastDate: {
+                ...(broadCastDateFrom ? { gte: broadCastDateFrom } : {}),
+                ...(broadCastDateTo ? { lte: broadCastDateTo } : {}),
               },
             },
           };
-    console.log(uploadedDateCond);
+    console.log(broadCastDateCond);
 
     const query = {
       bool: {
@@ -152,7 +152,7 @@ export async function searchVideoMultipleConditions(req, res) {
           durationCond,
           segmentCond,
           categoryCond,
-          uploadedDateCond,
+          broadCastDateCond,
         ].filter((i) => i !== null),
       },
     };
